@@ -4,11 +4,14 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
+	polygon "github.com/polygon-io/client-go/rest"
+	"github.com/polygon-io/client-go/rest/models"
 	"github.com/spf13/cobra"
 	telebot "gopkg.in/telebot.v3"
 )
@@ -18,11 +21,16 @@ var (
 	TeleToken = os.Getenv("TELE_TOKEN")
 )
 
+var (
+	// Polygon API key
+	PolygonAPIKey = os.Getenv("POLYGON_API_KEY")
+)
+
 // kbotCmd represents the kbot command
 var kbotCmd = &cobra.Command{
-	Use:   "kbot",
+	Use:     "kbot",
 	Aliases: []string{"start"},
-	Short: "A brief description of your command",
+	Short:   "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
@@ -38,10 +46,38 @@ to quickly create a Cobra application.`,
 			Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
 		})
 
+		polygonClient := polygon.New(PolygonAPIKey)
+
 		if err != nil {
 			log.Fatalf("Please check TELE_TOKEN env variable %s", err)
 			return
 		}
+
+		kbot.Handle("/ticker", func(c telebot.Context) error {
+			ticker := c.Message().Payload
+
+			log.Printf("Ticker: %s\n", ticker)
+
+			params := models.GetPreviousCloseAggParams{
+				Ticker: ticker,
+			}.WithAdjusted(true)
+
+			// make request
+			res, err := polygonClient.GetPreviousCloseAgg(context.Background(), params)
+			if err != nil {
+				log.Fatal(err)
+				return err
+			}
+
+			if res.ResultsCount < 0 {
+				sendErr := c.Send("Ticker wasn't found!")
+				return sendErr
+			}
+
+			c.Send(fmt.Sprintf("Open price for %s: %.2f$", ticker, res.Results[0].Open))
+			c.Send(fmt.Sprintf("Close price for %s: %.2f$", ticker, res.Results[0].Close))
+			return err
+		})
 
 		kbot.Handle(telebot.OnText, func(m telebot.Context) error {
 
