@@ -7,4 +7,10 @@ Write command with ticker:
 ```
 /ticker MSFT
 ```
-
+You can use popular tickets:
+* MSFT Microsoft
+* AAPL	Apple Inc.
+* NVDA	NVIDIA Corporation
+* ORCL	Oracle Corporation
+* ORCL	Oracle Corporation
+* DELL	Dell Technologies Inc.
